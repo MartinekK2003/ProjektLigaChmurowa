@@ -1,2 +1,5 @@
-flask
+Flask
 gunicorn
+Flask-SQLAlchemy
+Flask-Login
+mysql-connector-python
