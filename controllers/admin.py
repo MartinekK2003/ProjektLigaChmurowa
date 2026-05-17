@@ -32,7 +32,7 @@ def admin_druzyny():
     <form method="POST" class="d-flex gap-2 mt-3 mb-4">
         <input type="hidden" name="action" value="add">
         <input type="text" name="team_name" class="form-control" placeholder="Nazwa nowego klubu" required>
-        <button type="submit" class="btn btn-danger">Rejestruj drużynę</button>
+        <button type="submit" class="btn btn-danger">Dodaj drużynę</button>
     </form>
     <table class="table table-bordered">
         <thead class="table-dark"><tr><th>ID</th><th>Nazwa Klubu</th><th>Akcje</th></tr></thead>
