@@ -9,15 +9,24 @@ BASE_HTML_HEAD = """
 </head>
 """
 
-# Otwarcie strony i menu nawigacyjne
 NAV_HTML = BASE_HTML_HEAD + """
 <body class="container mt-4">
-    <nav class="navbar navbar-dark bg-dark p-3 rounded mb-4 shadow">
+    <nav class="navbar navbar-dark bg-dark p-3 rounded mb-4 shadow d-flex justify-content-between">
         <div class="text-white">
-            Zalogowany jako: <b>{{ current_user.username }}</b> 
-            <span class="badge bg-primary ms-2">{{ current_user.role.name|upper }}</span>
+            {% if current_user.is_authenticated %}
+                Zalogowany jako: <b>{{ current_user.username }}</b> 
+                <span class="badge bg-primary ms-2">{{ current_user.role.name|upper }}</span>
+            {% else %}
+                <b>Tryb Gościa (Kibic)</b>
+            {% endif %}
         </div>
-        <a href="{{ url_for('auth_bp.logout') }}" class="btn btn-danger btn-sm fw-bold">Wyloguj się</a>
+        <div>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('auth_bp.logout') }}" class="btn btn-danger btn-sm fw-bold">Wyloguj się</a>
+            {% else %}
+                <a href="{{ url_for('auth_bp.login') }}" class="btn btn-success btn-sm fw-bold">Zaloguj się (Dla Klubów)</a>
+            {% endif %}
+        </div>
     </nav>
 
     <div class="row mb-4">
@@ -26,16 +35,18 @@ NAV_HTML = BASE_HTML_HEAD + """
             <a href="{{ url_for('kibic_bp.strzelcy') }}" class="btn btn-outline-dark">Król Strzelców</a>
             <a href="{{ url_for('kibic_bp.historia_klubow') }}" class="btn btn-primary fw-bold">Historia Klubów 🕒</a>
 
-            {% if current_user.role.name == 'coach' %}
-                <a href="{{ url_for('trener_bp.trener_sklad') }}" class="btn btn-success">Zarządzaj Składem</a>
-            {% endif %}
+            {% if current_user.is_authenticated %}
+                {% if current_user.role.name == 'coach' %}
+                    <a href="{{ url_for('trener_bp.trener_sklad') }}" class="btn btn-success">Zarządzaj Składem</a>
+                {% endif %}
 
-            {% if current_user.role.name == 'referee' %}
-                <a href="{{ url_for('sedzia_bp.sedzia_mecze') }}" class="btn btn-warning">Wprowadź Wyniki</a>
-            {% endif %}
+                {% if current_user.role.name == 'referee' %}
+                    <a href="{{ url_for('sedzia_bp.sedzia_mecze') }}" class="btn btn-warning">Wprowadź Wyniki</a>
+                {% endif %}
 
-            {% if current_user.role.name == 'admin' %}
-                <a href="{{ url_for('admin_bp.admin_druzyny') }}" class="btn btn-danger">Zarządzaj Drużynami</a>
+                {% if current_user.role.name == 'admin' %}
+                    <a href="{{ url_for('admin_bp.admin_druzyny') }}" class="btn btn-danger">Zarządzaj Drużynami</a>
+                {% endif %}
             {% endif %}
         </div>
     </div>
@@ -43,14 +54,12 @@ NAV_HTML = BASE_HTML_HEAD + """
     <div class="card shadow-sm p-4">
 """
 
-# Zamknięcie strony
 FOOTER_HTML = """
     </div>
 </body>
 """
 
-# Pozostawiamy dla kompatybilności z auth.py strony głównej
 DASHBOARD_HTML = NAV_HTML + """
     <h2 class="text-center">Witaj w systemie zarządzania Ligą Chmurową!</h2>
-    <p class="text-center text-muted">Wybierz moduł z menu powyżej, aby rozpocząć pracę.</p>
+    <p class="text-center text-muted">Wybierz moduł z menu powyżej, aby przeglądać statystyki rozgrywek.</p>
 """ + FOOTER_HTML

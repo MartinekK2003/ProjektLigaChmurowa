@@ -1,15 +1,12 @@
 # controllers/kibic.py
 from flask import Blueprint, render_template_string
-from flask_login import login_required
 from sqlalchemy import func, or_
 from models import db, Team, Match, Player, Goal, Season
 from controllers import NAV_HTML, FOOTER_HTML
 
 kibic_bp = Blueprint('kibic_bp', __name__)
 
-
 @kibic_bp.route('/tabela')
-@login_required
 def tabela():
     teams = Team.query.all()
     matches = Match.query.filter_by(is_finished=True).all()
@@ -47,7 +44,6 @@ def tabela():
 
 
 @kibic_bp.route('/strzelcy')
-@login_required
 def strzelcy():
     top_scorers = db.session.query(Player.name, func.sum(Goal.goals).label('total')) \
         .join(Goal).group_by(Player.id).order_by(func.sum(Goal.goals).desc()).limit(10).all()
@@ -67,12 +63,12 @@ def strzelcy():
 
 
 @kibic_bp.route('/historia_klubow')
-@login_required
 def historia_klubow():
     seasons = Season.query.all()
     teams = Team.query.all()
     team_names = {t.id: t.name for t in teams}
 
+    # Pobieramy całą strukturę danych na raz do pamięci podręcznej
     historia_danych = []
 
     for s in seasons:
@@ -82,6 +78,7 @@ def historia_klubow():
             'top_scorers': []
         }
         for t in teams:
+            # Filtrujemy mecze dla konkretnego zespołu w tym konkretnym sezonie
             matches = Match.query.filter(
                 Match.season_id == s.id,
                 or_(Match.home_team_id == t.id, Match.away_team_id == t.id)
@@ -93,6 +90,7 @@ def historia_klubow():
                     'matches': matches
                 })
 
+                # Wyliczamy najlepszego strzelca danej drużyny w tym konkretnym sezonie
                 top_scorer = db.session.query(Player.name, func.sum(Goal.goals).label('total')) \
                     .join(Goal, Player.id == Goal.player_id) \
                     .join(Match, Goal.match_id == Match.id) \
@@ -199,6 +197,7 @@ def historia_klubow():
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     """
+
     return render_template_string(NAV_HTML + CONTENT_HTML + FOOTER_HTML,
                                   historia_danych=historia_danych,
                                   team_names=team_names)

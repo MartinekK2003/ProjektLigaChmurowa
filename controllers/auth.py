@@ -20,9 +20,15 @@ LOGIN_HTML = BASE_HTML_HEAD + """
             <input type="password" class="form-control mb-3" name="password" placeholder="Hasło" required>
             <button type="submit" class="btn btn-primary w-100 fw-bold">Zaloguj się</button>
         </form>
+
+        <div class="text-center mt-3 border-top pt-3">
+            <a href="{{ url_for('auth_bp.dashboard') }}" class="btn btn-outline-secondary w-100">Przeglądaj jako Kibic (Gość)</a>
+        </div>
+
     </div>
 </body>
 """
+
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -38,13 +44,15 @@ def login():
         flash('Błędny login lub hasło!')
     return render_template_string(LOGIN_HTML)
 
+
 @auth_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('auth_bp.login'))
 
+
+# USUNIĘTO @login_required DLA STRONY GŁÓWNEJ
 @auth_bp.route('/')
-@login_required
 def dashboard():
     return render_template_string(DASHBOARD_HTML)
