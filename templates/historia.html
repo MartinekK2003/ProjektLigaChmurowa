@@ -1,0 +1,87 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4 border-end">
+        <h4 class="mb-3">1. Wybierz Sezon</h4>
+        <div class="list-group mb-4">
+            {% for s in seasons %}
+                <a href="{{ url_for('kibic_bp.historia_klubow', season_id=s.id) }}"
+                   class="list-group-item list-group-item-action {% if selected_season and selected_season.id == s.id %}active{% endif %}">
+                    {{ s.name }}
+                </a>
+            {% endfor %}
+        </div>
+
+        {% if selected_season %}
+            <h4 class="mb-3">2. Wybierz Klub</h4>
+            <div class="list-group">
+                {% for t in teams %}
+                    <a href="{{ url_for('kibic_bp.historia_klubow', season_id=selected_season.id, team_id=t.id) }}"
+                       class="list-group-item list-group-item-action {% if selected_team and selected_team.id == t.id %}list-group-item-success fw-bold{% endif %}">
+                        {{ t.name }}
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info text-center p-2">Wybierz sezon z listy powyżej, aby zobaczyć kluby.</div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-8 ps-4">
+        {% if selected_season and selected_team %}
+            <div class="alert alert-dark p-3 text-center mb-4 shadow-sm">
+                <h3 class="m-0">Statystyki: <span class="text-success">{{ selected_team.name }}</span></h3>
+                <small class="text-muted">Okres: {{ selected_season.name }}</small>
+            </div>
+
+            <div class="row">
+                <div class="col-md-7 mb-4">
+                    <h5 class="border-bottom pb-2 text-secondary">Rozegrane Mecze</h5>
+                    {% for m in matches %}
+                        <div class="card mb-2 shadow-sm p-2 {% if m.is_finished %}bg-white{% else %}bg-light text-muted{% endif %}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="{% if m.home_team_id == selected_team.id %}fw-bold text-primary{% endif %}">
+                                    {{ team_names[m.home_team_id] }}
+                                </span>
+                                <span class="badge bg-dark p-2 fs-6">
+                                    {% if m.is_finished %}{{ m.home_score }} - {{ m.away_score }}{% else %}vs{% endif %}
+                                </span>
+                                <span class="{% if m.away_team_id == selected_team.id %}fw-bold text-primary{% endif %}">
+                                    {{ team_names[m.away_team_id] }}
+                                </span>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted small">Ta drużyna nie rozegrała żadnych spotkań w tym sezonie.</p>
+                    {% endfor %}
+                </div>
+
+                <div class="col-md-5">
+                    <h5 class="border-bottom pb-2 text-secondary">Strzelcy Drużyny</h5>
+                    <table class="table table-sm table-hover bg-white border">
+                        <thead class="table-secondary"><tr><th>Zawodnik</th><th class="text-center">Gole</th></tr></thead>
+                        <tbody>
+                            {% for scorer in team_top_scorers %}
+                            <tr>
+                                <td>{{ scorer.name }}</td>
+                                <td class="text-center"><b>{{ scorer.total }}</b> ⚽</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="2" class="text-muted small text-center">Brak strzelców w tym sezonie.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% else %}
+            <div class="h-100 d-flex justify-content-center align-items-center text-muted" style="min-height: 300px;">
+                <div class="text-center">
+                    <h4>🔍 Brak wybranej konfiguracji</h4>
+                    <p>Kliknij na sezon, a następnie wybierz interesującą Cię drużynę z lewego menu.</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
