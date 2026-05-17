@@ -1,17 +1,16 @@
+# setup_sqlite.py
 import os
 from app import app, db
 from models import Role, Team, User, Player, Season, Match, Goal
 
 
 def setup_database():
-    # Sprawdzenie, czy plik bazy danych już istnieje - jeśli tak, usuwamy go, by zacząć od zera
-    db_file = "liga_chmurowa.db"
-    if os.path.exists(db_file):
-        os.remove(db_file)
-        print(f"--- Usunięto istniejący plik {db_file} ---")
-
     with app.app_context():
-        print("--- Inicjalizacja nowej bazy danych SQLite ---")
+        print("--- Czyszczenie i inicjalizacja bazy danych w chmurze ---")
+
+        # Zamiast os.remove() używamy bezpiecznego drop_all,
+        # co nie uszkadza otwartych połączeń w Azure
+        db.drop_all()
         db.create_all()
 
         # 1. DODAWANIE RÓL
@@ -44,7 +43,7 @@ def setup_database():
         ]
         db.session.add_all(teams)
 
-        # Zapisujemy zmiany, aby klucze obce dla graczy i użytkowników były poprawne
+        # Zapisujemy pierwszą część, aby ID były gotowe dla relacji
         db.session.commit()
 
         # 4. DODAWANIE UŻYTKOWNIKÓW
@@ -58,7 +57,7 @@ def setup_database():
         ]
         db.session.add_all(users)
 
-        # 5. DODAWANIE ZAWODNIKÓW (75 zawodników z Twojego SQL)
+        # 5. DODAWANIE ZAWODNIKÓW (75 osób)
         print("Dodawanie zawodników (75 osób)...")
         players_data = [
             # FC Gunicorn (Team 1)
@@ -104,9 +103,9 @@ def setup_database():
         ]
         db.session.add_all(goals)
 
-        # Finalne zatwierdzenie wszystkich danych
+        # Finalne zapisanie całego seedowania
         db.session.commit()
-        print("\n✅ GOTOWE! Plik liga_chmurowa.db został utworzony i uzupełniony.")
+        print("\n✅ GOTOWE! Nowa baza danych została pomyślnie napełniona danymi.")
 
 
 if __name__ == "__main__":
