@@ -25,6 +25,7 @@ DASHBOARD_HTML = BASE_HTML_HEAD + """
         <div class="col-12 d-flex gap-2 justify-content-center">
             <a href="{{ url_for('kibic_bp.tabela') }}" class="btn btn-outline-dark">Tabela Ligi</a>
             <a href="{{ url_for('kibic_bp.strzelcy') }}" class="btn btn-outline-dark">Król Strzelców</a>
+            <a href="{{ url_for('kibic_bp.historia_klubow') }}" class="btn btn-primary fw-bold">Historia Klubów 🕒</a>
 
             {% if current_user.role.name == 'coach' %}
                 <a href="{{ url_for('trener_bp.trener_sklad') }}" class="btn btn-success">Zarządzaj Składem</a>
