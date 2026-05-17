@@ -67,7 +67,7 @@ def strzelcy():
 
 
 # =========================================================================
-# NOWA FUNKCJONALNOŚC: ROZWIJANA HISTORIA KLUBÓW I SEZONÓW
+# NOWA FUNKCJONALNOŚC: HISTORIA KLUBÓW I SEZONÓW (LISTY)
 # =========================================================================
 @kibic_bp.route('/historia_klubow')
 @login_required
@@ -121,82 +121,76 @@ def historia_klubow():
     html = "{% extends 'dashboard' %}{% block content %}" + """
     <h3 class="mb-4 text-center">Archiwum Rozgrywek</h3>
 
-    <div class="accordion shadow-sm" id="seasonsAccordion">
+    <div class="seasons-container">
         {% for s_data in historia_danych %}
-        <div class="accordion-item mb-3 border">
-            <h2 class="accordion-header" id="headingSeason{{ s_data.season.id }}">
-                <button class="accordion-button collapsed fw-bold fs-5 bg-light text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSeason{{ s_data.season.id }}" aria-expanded="false" aria-controls="collapseSeason{{ s_data.season.id }}">
-                    🏆 {{ s_data.season.name }}
-                </button>
-            </h2>
-            <div id="collapseSeason{{ s_data.season.id }}" class="accordion-collapse collapse" aria-labelledby="headingSeason{{ s_data.season.id }}" data-bs-parent="#seasonsAccordion">
-                <div class="accordion-body bg-white">
-                    <div class="row">
+        <div class="card mb-5 shadow-sm border-0">
+            <div class="card-header bg-dark text-white p-3">
+                <h4 class="m-0">🏆 {{ s_data.season.name }}</h4>
+            </div>
 
-                        <div class="col-md-7 border-end">
-                            <h5 class="mb-3 text-secondary">Kluby w sezonie:</h5>
-                            <div class="accordion" id="teamsAccordion{{ s_data.season.id }}">
-                                {% for t_data in s_data.teams_data %}
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header" id="headingTeam{{ s_data.season.id }}_{{ t_data.team.id }}">
-                                        <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTeam{{ s_data.season.id }}_{{ t_data.team.id }}" aria-expanded="false" aria-controls="collapseTeam{{ s_data.season.id }}_{{ t_data.team.id }}">
-                                            ⚽ <strong>{{ t_data.team.name }}</strong>
-                                        </button>
-                                    </h2>
-                                    <div id="collapseTeam{{ s_data.season.id }}_{{ t_data.team.id }}" class="accordion-collapse collapse" aria-labelledby="headingTeam{{ s_data.season.id }}_{{ t_data.team.id }}" data-bs-parent="#teamsAccordion{{ s_data.season.id }}">
-                                        <div class="accordion-body p-0">
-                                            <ul class="list-group list-group-flush">
-                                                {% for m in t_data.matches %}
-                                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                    <span class="{% if m.home_team_id == t_data.team.id %}fw-bold text-primary{% endif %}">{{ team_names[m.home_team_id] }}</span>
-                                                    <span class="badge bg-dark rounded-pill mx-2 fs-6">
-                                                        {% if m.is_finished %}{{ m.home_score }} - {{ m.away_score }}{% else %}vs{% endif %}
-                                                    </span>
-                                                    <span class="{% if m.away_team_id == t_data.team.id %}fw-bold text-primary{% endif %}">{{ team_names[m.away_team_id] }}</span>
-                                                </li>
-                                                {% endfor %}
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
+            <div class="card-body bg-white border border-top-0 rounded-bottom">
+                <div class="row">
+
+                    <div class="col-md-7 border-end">
+                        <h5 class="mb-4 text-secondary border-bottom pb-2">Rozegrane mecze klubów:</h5>
+
+                        <div class="list-group list-group-flush">
+                            {% for t_data in s_data.teams_data %}
+                            <div class="list-group-item px-0 mb-3 border-0">
+                                <h6 class="fw-bold text-primary mb-2">⚽ {{ t_data.team.name }}</h6>
+                                <ul class="list-group list-group-flush border rounded">
+                                    {% for m in t_data.matches %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 bg-light">
+                                        <span class="{% if m.home_team_id == t_data.team.id %}fw-bold text-dark{% else %}text-muted{% endif %}">
+                                            {{ team_names[m.home_team_id] }}
+                                        </span>
+                                        <span class="badge bg-secondary rounded-pill mx-2 fs-6">
+                                            {% if m.is_finished %}{{ m.home_score }} - {{ m.away_score }}{% else %}vs{% endif %}
+                                        </span>
+                                        <span class="{% if m.away_team_id == t_data.team.id %}fw-bold text-dark{% else %}text-muted{% endif %}">
+                                            {{ team_names[m.away_team_id] }}
+                                        </span>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
                             </div>
+                            {% endfor %}
                         </div>
-
-                        <div class="col-md-5 ps-4">
-                            <h5 class="mb-3 text-secondary">Królowie Strzelców Drużyn:</h5>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover border">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Klub</th>
-                                            <th>Najlepszy Strzelec</th>
-                                            <th class="text-center">Gole</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for scorer in s_data.top_scorers %}
-                                        <tr>
-                                            <td><small class="fw-bold">{{ scorer.team_name }}</small></td>
-                                            <td><small>{{ scorer.player_name }}</small></td>
-                                            <td class="text-center text-success fw-bold">{{ scorer.goals }}</td>
-                                        </tr>
-                                        {% else %}
-                                        <tr>
-                                            <td colspan="3" class="text-center text-muted py-3">Brak zdobytych bramek w tym sezonie.</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
                     </div>
+
+                    <div class="col-md-5 ps-4">
+                        <h5 class="mb-4 text-secondary border-bottom pb-2">Królowie Strzelców Drużyn:</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover border shadow-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Klub</th>
+                                        <th>Najlepszy Strzelec</th>
+                                        <th class="text-center">Gole</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for scorer in s_data.top_scorers %}
+                                    <tr>
+                                        <td class="align-middle"><small class="fw-bold">{{ scorer.team_name }}</small></td>
+                                        <td class="align-middle"><small>{{ scorer.player_name }}</small></td>
+                                        <td class="text-center text-success fw-bold align-middle fs-5">{{ scorer.goals }}</td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-3">Brak zdobytych bramek w tym sezonie.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
         {% else %}
-        <div class="alert alert-info text-center">Brak rozegranych meczów w bazie danych.</div>
+        <div class="alert alert-info text-center fs-5 shadow-sm">Brak rozegranych meczów w bazie danych.</div>
         {% endfor %}
     </div>
     {% endblock %}"""
