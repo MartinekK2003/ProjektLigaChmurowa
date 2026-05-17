@@ -3,14 +3,12 @@ from flask_login import UserMixin
 
 db = SQLAlchemy()
 
-# Tabela ról (admin, referee, coach, user)
 class Role(db.Model):
     __tablename__ = 'roles'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
     users = db.relationship('User', backref='role', lazy=True)
 
-# Tabela drużyn
 class Team(db.Model):
     __tablename__ = 'teams'
     id = db.Column(db.Integer, primary_key=True)
@@ -18,23 +16,20 @@ class Team(db.Model):
     users = db.relationship('User', backref='team', lazy=True)
     players = db.relationship('Player', backref='team', lazy=True)
 
-# Tabela użytkowników (UserMixin dodaje nam funkcje dla Flask-Login)
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), nullable=False)
-    password = db.Column(db.String(255), nullable=False) # W produkcji używamy hashów!
+    password = db.Column(db.String(255), nullable=False)
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=True)
 
-# Tabela zawodników (zgodnie z poprawką - bez statusu)
 class Player(db.Model):
     __tablename__ = 'players'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
 
-# Pozostałe tabele (Sezony, Mecze, Gole) - dodajemy je, żeby SQLAlchemy widziało pełen obraz
 class Season(db.Model):
     __tablename__ = 'seasons'
     id = db.Column(db.Integer, primary_key=True)
