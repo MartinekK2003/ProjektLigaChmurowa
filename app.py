@@ -41,11 +41,5 @@ app.register_blueprint(trener_bp)
 app.register_blueprint(sedzia_bp)
 app.register_blueprint(admin_bp)
 
-@app.route('/zainstaluj-baze')
-def zainstaluj_baze():
-    from setup_sqlite import setup_database
-    setup_database()
-    return "Sukces! Nowe tabele i dane zostały załadowane do chmury. Wróć na stronę główną."
-
 if __name__ == '__main__':
     app.run(debug=True)
