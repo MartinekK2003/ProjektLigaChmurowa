@@ -67,7 +67,7 @@ def strzelcy():
 
 
 # =========================================================================
-# NOWA FUNKCJONALNOŚC: HISTORIA KLUBÓW I SEZONÓW (LISTY)
+# FUNKCJONALNOŚĆ: INTERAKTYWNA ROZWIJANA LISTA (BEZ PRZEŁADOWANIA STRONY)
 # =========================================================================
 @kibic_bp.route('/historia_klubow')
 @login_required
@@ -76,7 +76,7 @@ def historia_klubow():
     teams = Team.query.all()
     team_names = {t.id: t.name for t in teams}
 
-    # Przygotowanie struktury danych: Sezon -> Kluby -> Mecze i Najlepsi strzelcy
+    # Pobieramy całą strukturę danych na raz do pamięci podręcznej
     historia_danych = []
 
     for s in seasons:
@@ -86,7 +86,7 @@ def historia_klubow():
             'top_scorers': []
         }
         for t in teams:
-            # 1. Pobieramy mecze danej drużyny w danym sezonie
+            # Filtrujemy mecze dla konkretnego zespołu w tym konkretnym sezonie
             matches = Match.query.filter(
                 Match.season_id == s.id,
                 or_(Match.home_team_id == t.id, Match.away_team_id == t.id)
@@ -98,7 +98,7 @@ def historia_klubow():
                     'matches': matches
                 })
 
-                # 2. Wyliczamy najlepszego strzelca TEJ konkretnej drużyny w TYM sezonie
+                # Wyliczamy najlepszego strzelca danej drużyny w tym konkretnym sezonie
                 top_scorer = db.session.query(Player.name, func.sum(Goal.goals).label('total')) \
                     .join(Goal, Player.id == Goal.player_id) \
                     .join(Match, Goal.match_id == Match.id) \
@@ -114,54 +114,66 @@ def historia_klubow():
                         'goals': top_scorer.total
                     })
 
-        # Dodajemy sezon do widoku tylko wtedy, gdy rozegrano w nim jakieś mecze
         if season_data['teams_data']:
             historia_danych.append(season_data)
 
+    # Konstruujemy widok przy użyciu Bootstrap Collapse (id i data-bs-target zamiast linków href)
     html = "{% extends 'dashboard' %}{% block content %}" + """
-    <h3 class="mb-4 text-center">Archiwum Rozgrywek</h3>
+    <h3 class="mb-4 text-center">Archiwum Rozgrywek (Lista Rozwijana)</h3>
 
-    <div class="seasons-container">
+    <div class="list-group shadow-sm">
         {% for s_data in historia_danych %}
-        <div class="card mb-5 shadow-sm border-0">
-            <div class="card-header bg-dark text-white p-3">
-                <h4 class="m-0">🏆 {{ s_data.season.name }}</h4>
-            </div>
+        <div class="list-group-item p-0 border mb-2 rounded">
 
-            <div class="card-body bg-white border border-top-0 rounded-bottom">
+            <button type="button" class="btn btn-light w-100 text-start p-3 fw-bold fs-5 d-flex justify-content-between align-items-center" 
+                    data-bs-toggle="collapse" data-bs-target="#collapseSeason{{ s_data.season.id }}">
+                <span>🏆 {{ s_data.season.name }}</span>
+                <small class="text-muted fs-6">Kliknij, aby rozwinąć sezon 🔽</small>
+            </button>
+
+            <div id="collapseSeason{{ s_data.season.id }}" class="collapse p-4 bg-white border-top">
                 <div class="row">
 
                     <div class="col-md-7 border-end">
-                        <h5 class="mb-4 text-secondary border-bottom pb-2">Rozegrane mecze klubów:</h5>
+                        <h5 class="mb-3 text-secondary">Kluby w tym sezonie (kliknij klub, aby rozwinąć mecze):</h5>
 
-                        <div class="list-group list-group-flush">
+                        <div class="list-group">
                             {% for t_data in s_data.teams_data %}
-                            <div class="list-group-item px-0 mb-3 border-0">
-                                <h6 class="fw-bold text-primary mb-2">⚽ {{ t_data.team.name }}</h6>
-                                <ul class="list-group list-group-flush border rounded">
-                                    {% for m in t_data.matches %}
-                                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 bg-light">
-                                        <span class="{% if m.home_team_id == t_data.team.id %}fw-bold text-dark{% else %}text-muted{% endif %}">
-                                            {{ team_names[m.home_team_id] }}
-                                        </span>
-                                        <span class="badge bg-secondary rounded-pill mx-2 fs-6">
-                                            {% if m.is_finished %}{{ m.home_score }} - {{ m.away_score }}{% else %}vs{% endif %}
-                                        </span>
-                                        <span class="{% if m.away_team_id == t_data.team.id %}fw-bold text-dark{% else %}text-muted{% endif %}">
-                                            {{ team_names[m.away_team_id] }}
-                                        </span>
-                                    </li>
-                                    {% endfor %}
-                                </ul>
+                            <div class="mb-2 border rounded">
+
+                                <button type="button" class="btn btn-outline-primary w-100 text-start py-2 px-3 fw-bold d-flex justify-content-between align-items-center" 
+                                        data-bs-toggle="collapse" data-bs-target="#collapseMatch_{{ s_data.season.id }}_{{ t_data.team.id }}">
+                                    <span>⚽ {{ t_data.team.name }}</span>
+                                    <small class="text-muted" style="font-size: 0.8rem;">Rozwiń mecze 📂</small>
+                                </button>
+
+                                <div id="collapseMatch_{{ s_data.season.id }}_{{ t_data.team.id }}" class="collapse bg-light">
+                                    <ul class="list-group list-group-flush">
+                                        {% for m in t_data.matches %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center py-2 bg-light">
+                                            <span class="{% if m.home_team_id == t_data.team.id %}fw-bold text-dark{% else %}text-muted{% endif %}">
+                                                {{ team_names[m.home_team_id] }}
+                                            </span>
+                                            <span class="badge bg-dark rounded-pill mx-2">
+                                                {% if m.is_finished %}{{ m.home_score }} - {{ m.away_score }}{% else %}vs{% endif %}
+                                            </span>
+                                            <span class="{% if m.away_team_id == t_data.team.id %}fw-bold text-dark{% else %}text-muted{% endif %}">
+                                                {{ team_names[m.away_team_id] }}
+                                            </span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+
                             </div>
                             {% endfor %}
                         </div>
                     </div>
 
                     <div class="col-md-5 ps-4">
-                        <h5 class="mb-4 text-secondary border-bottom pb-2">Królowie Strzelców Drużyn:</h5>
+                        <h5 class="mb-3 text-secondary">Król Strzelców każdej drużyny:</h5>
                         <div class="table-responsive">
-                            <table class="table table-hover border shadow-sm">
+                            <table class="table table-sm table-hover border shadow-sm">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Klub</th>
@@ -172,14 +184,12 @@ def historia_klubow():
                                 <tbody>
                                     {% for scorer in s_data.top_scorers %}
                                     <tr>
-                                        <td class="align-middle"><small class="fw-bold">{{ scorer.team_name }}</small></td>
-                                        <td class="align-middle"><small>{{ scorer.player_name }}</small></td>
-                                        <td class="text-center text-success fw-bold align-middle fs-5">{{ scorer.goals }}</td>
+                                        <td><small class="fw-bold text-muted">{{ scorer.team_name }}</small></td>
+                                        <td><small>{{ scorer.player_name }}</small></td>
+                                        <td class="text-center text-success fw-bold">{{ scorer.goals }} ⚽</td>
                                     </tr>
                                     {% else %}
-                                    <tr>
-                                        <td colspan="3" class="text-center text-muted py-3">Brak zdobytych bramek w tym sezonie.</td>
-                                    </tr>
+                                    <tr><td colspan="3" class="text-center text-muted py-2">Brak danych o bramkach.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -190,9 +200,11 @@ def historia_klubow():
             </div>
         </div>
         {% else %}
-        <div class="alert alert-info text-center fs-5 shadow-sm">Brak rozegranych meczów w bazie danych.</div>
+        <div class="alert alert-info text-center">Brak rozegranych sezonów w bazie danych.</div>
         {% endfor %}
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     {% endblock %}"""
 
     return render_template_string(html.replace('dashboard', DASHBOARD_HTML),
