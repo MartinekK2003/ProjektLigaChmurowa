@@ -3,7 +3,7 @@ from flask import Blueprint, render_template_string
 from flask_login import login_required
 from sqlalchemy import func, or_
 from models import db, Team, Match, Player, Goal, Season
-from controllers import DASHBOARD_HTML
+from controllers import NAV_HTML, FOOTER_HTML
 
 kibic_bp = Blueprint('kibic_bp', __name__)
 
@@ -32,7 +32,7 @@ def tabela():
 
     sorted_table = sorted(stats.values(), key=lambda x: x['points'], reverse=True)
 
-    html = "{% extends 'dashboard' %}{% block content %}" + """
+    CONTENT_HTML = """
     <h3>Tabela Ligi</h3>
     <table class="table table-striped mt-3">
         <thead class="table-dark"><tr><th>Miejsce</th><th>Drużyna</th><th>Punkty</th><th>Bramki (Z-S)</th></tr></thead>
@@ -42,8 +42,8 @@ def tabela():
             {% endfor %}
         </tbody>
     </table>
-    {% endblock %}"""
-    return render_template_string(html.replace('dashboard', DASHBOARD_HTML), table=sorted_table)
+    """
+    return render_template_string(NAV_HTML + CONTENT_HTML + FOOTER_HTML, table=sorted_table)
 
 
 @kibic_bp.route('/strzelcy')
@@ -52,7 +52,7 @@ def strzelcy():
     top_scorers = db.session.query(Player.name, func.sum(Goal.goals).label('total')) \
         .join(Goal).group_by(Player.id).order_by(func.sum(Goal.goals).desc()).limit(10).all()
 
-    html = "{% extends 'dashboard' %}{% block content %}" + """
+    CONTENT_HTML = """
     <h3>Top 10 Strzelców</h3>
     <table class="table table-bordered mt-3">
         <thead class="table-dark"><tr><th>#</th><th>Zawodnik</th><th>Suma Goli</th></tr></thead>
@@ -62,13 +62,10 @@ def strzelcy():
             {% else %}<tr><td colspan="3">Brak zdobytych bramek w lidze.</td></tr>{% endfor %}
         </tbody>
     </table>
-    {% endblock %}"""
-    return render_template_string(html.replace('dashboard', DASHBOARD_HTML), scorers=top_scorers)
+    """
+    return render_template_string(NAV_HTML + CONTENT_HTML + FOOTER_HTML, scorers=top_scorers)
 
 
-# =========================================================================
-# FUNKCJONALNOŚĆ: INTERAKTYWNA ROZWIJANA LISTA (BEZ PRZEŁADOWANIA STRONY)
-# =========================================================================
 @kibic_bp.route('/historia_klubow')
 @login_required
 def historia_klubow():
@@ -76,7 +73,6 @@ def historia_klubow():
     teams = Team.query.all()
     team_names = {t.id: t.name for t in teams}
 
-    # Pobieramy całą strukturę danych na raz do pamięci podręcznej
     historia_danych = []
 
     for s in seasons:
@@ -86,7 +82,6 @@ def historia_klubow():
             'top_scorers': []
         }
         for t in teams:
-            # Filtrujemy mecze dla konkretnego zespołu w tym konkretnym sezonie
             matches = Match.query.filter(
                 Match.season_id == s.id,
                 or_(Match.home_team_id == t.id, Match.away_team_id == t.id)
@@ -98,7 +93,6 @@ def historia_klubow():
                     'matches': matches
                 })
 
-                # Wyliczamy najlepszego strzelca danej drużyny w tym konkretnym sezonie
                 top_scorer = db.session.query(Player.name, func.sum(Goal.goals).label('total')) \
                     .join(Goal, Player.id == Goal.player_id) \
                     .join(Match, Goal.match_id == Match.id) \
@@ -117,8 +111,7 @@ def historia_klubow():
         if season_data['teams_data']:
             historia_danych.append(season_data)
 
-    # Konstruujemy widok przy użyciu Bootstrap Collapse (id i data-bs-target zamiast linków href)
-    html = "{% extends 'dashboard' %}{% block content %}" + """
+    CONTENT_HTML = """
     <h3 class="mb-4 text-center">Archiwum Rozgrywek (Lista Rozwijana)</h3>
 
     <div class="list-group shadow-sm">
@@ -205,8 +198,7 @@ def historia_klubow():
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    {% endblock %}"""
-
-    return render_template_string(html.replace('dashboard', DASHBOARD_HTML),
+    """
+    return render_template_string(NAV_HTML + CONTENT_HTML + FOOTER_HTML,
                                   historia_danych=historia_danych,
                                   team_names=team_names)

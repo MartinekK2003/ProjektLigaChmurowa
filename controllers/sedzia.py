@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template_string, request, redirect, url_for
 from flask_login import login_required, current_user
 from models import db, Match
-from controllers import DASHBOARD_HTML
+from controllers import NAV_HTML, FOOTER_HTML
 
 sedzia_bp = Blueprint('sedzia_bp', __name__)
 
@@ -24,7 +24,7 @@ def sedzia_mecze():
 
     pending_matches = Match.query.filter_by(is_finished=False).all()
 
-    html = "{% extends 'dashboard' %}{% block content %}" + """
+    CONTENT_HTML = """
     <h3>Wprowadzanie Wyników</h3>
     <div class="row mt-3">
         {% for m in matches %}
@@ -43,5 +43,5 @@ def sedzia_mecze():
         </div>
         {% else %} <p class="text-muted">Brak zaplanowanych meczów do rozegrania.</p> {% endfor %}
     </div>
-    {% endblock %}"""
-    return render_template_string(html.replace('dashboard', DASHBOARD_HTML), matches=pending_matches)
+    """
+    return render_template_string(NAV_HTML + CONTENT_HTML + FOOTER_HTML, matches=pending_matches)

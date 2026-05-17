@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template_string, request, redirect, url_for
 from flask_login import login_required, current_user
 from models import db, Team
-from controllers import DASHBOARD_HTML
+from controllers import NAV_HTML, FOOTER_HTML
 
 admin_bp = Blueprint('admin_bp', __name__)
 
@@ -27,7 +27,7 @@ def admin_druzyny():
 
     teams = Team.query.all()
 
-    html = "{% extends 'dashboard' %}{% block content %}" + """
+    CONTENT_HTML = """
     <h3 class="text-danger">Panel Administracyjny: Drużyny</h3>
     <form method="POST" class="d-flex gap-2 mt-3 mb-4">
         <input type="hidden" name="action" value="add">
@@ -51,5 +51,5 @@ def admin_druzyny():
             {% endfor %}
         </tbody>
     </table>
-    {% endblock %}"""
-    return render_template_string(html.replace('dashboard', DASHBOARD_HTML), teams=teams)
+    """
+    return render_template_string(NAV_HTML + CONTENT_HTML + FOOTER_HTML, teams=teams)

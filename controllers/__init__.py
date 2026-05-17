@@ -1,6 +1,5 @@
 # controllers/__init__.py
 
-# Wspólny nagłówek z użyciem Bootstrapa
 BASE_HTML_HEAD = """
 <head>
     <meta charset="UTF-8">
@@ -10,8 +9,8 @@ BASE_HTML_HEAD = """
 </head>
 """
 
-# Wspólny szablon z nawigacją dla zalogowanych użytkowników
-DASHBOARD_HTML = BASE_HTML_HEAD + """
+# Otwarcie strony i menu nawigacyjne
+NAV_HTML = BASE_HTML_HEAD + """
 <body class="container mt-4">
     <nav class="navbar navbar-dark bg-dark p-3 rounded mb-4 shadow">
         <div class="text-white">
@@ -42,10 +41,16 @@ DASHBOARD_HTML = BASE_HTML_HEAD + """
     </div>
 
     <div class="card shadow-sm p-4">
-        {% block content %}
-            <h2 class="text-center">Witaj w systemie zarządzania Ligą Chmurową!</h2>
-            <p class="text-center text-muted">Wybierz moduł z menu powyżej, aby rozpocząć pracę.</p>
-        {% endblock %}
+"""
+
+# Zamknięcie strony
+FOOTER_HTML = """
     </div>
 </body>
 """
+
+# Pozostawiamy dla kompatybilności z auth.py strony głównej
+DASHBOARD_HTML = NAV_HTML + """
+    <h2 class="text-center">Witaj w systemie zarządzania Ligą Chmurową!</h2>
+    <p class="text-center text-muted">Wybierz moduł z menu powyżej, aby rozpocząć pracę.</p>
+""" + FOOTER_HTML

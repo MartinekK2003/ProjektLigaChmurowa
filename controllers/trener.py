@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template_string, request, redirect, url_for
 from flask_login import login_required, current_user
 from models import db, Team, Player
-from controllers import DASHBOARD_HTML
+from controllers import NAV_HTML, FOOTER_HTML
 
 trener_bp = Blueprint('trener_bp', __name__)
 
@@ -30,7 +30,7 @@ def trener_sklad():
 
     my_team = Team.query.get(current_user.team_id)
 
-    html = "{% extends 'dashboard' %}{% block content %}" + """
+    CONTENT_HTML = """
     <h3>Skład drużyny: <span class="text-primary">{{ team.name }}</span></h3>
     <form method="POST" class="d-flex gap-2 mt-3 mb-4">
         <input type="hidden" name="action" value="add">
@@ -49,5 +49,5 @@ def trener_sklad():
         </li>
         {% endfor %}
     </ul>
-    {% endblock %}"""
-    return render_template_string(html.replace('dashboard', DASHBOARD_HTML), team=my_team)
+    """
+    return render_template_string(NAV_HTML + CONTENT_HTML + FOOTER_HTML, team=my_team)
