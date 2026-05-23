@@ -19,11 +19,14 @@ def trener_sklad():
 
     my_team = Team.query.get(current_user.team_id)
 
-    # Zmienne dla analizy rywala
+    # Zmienne pomocnicze dla analizy rywala
     best_player_name = None
     max_goals = 0
     searched_team = None
     error_msg = None
+
+    # Domyślnie aktywna zakładka to 'squad' (skład)
+    active_tab = 'squad'
 
     if request.method == 'POST':
         action = request.form.get('action')
@@ -45,6 +48,9 @@ def trener_sklad():
 
         # AKCJA: ANALIZA RYWALA
         elif action == 'analyze':
+            # Skoro kliknięto analizę, po przeładowaniu chcemy otworzyć zakładkę 'analyze'
+            active_tab = 'analyze'
+
             team_name = request.form.get('team_name')
             searched_team = Team.query.filter(Team.name.ilike(f"%{team_name}%")).first()
 
@@ -67,70 +73,99 @@ def trener_sklad():
                     best_player_name = result.name
                     max_goals = result.total_goals
                 else:
-                    error_msg = f"Twoja drużyna nie strzeliła jeszcze ani jednego gola drużynie {searched_team.name} (lub nie graliście ze sobą)."
+                    error_msg = f"Twoja drużyna nie strzeliła jeszcze ani jednego gola drużynie {searched_team.name}."
 
-    # POŁĄCZONY WIDOK HTML (Dwie kolumny obok siebie)
+    # WIDOK HTML Z ZAKŁADKAMI (TABAMI) OBOK SIEBIE
     CONTENT_HTML = """
     <div class="container mt-4">
-        <div class="row">
-
-            <div class="col-md-6 border-end pe-4">
-                <h3>Skład drużyny: <span class="text-primary">{{ team.name }}</span></h3>
-                <form method="POST" class="d-flex gap-2 mt-3 mb-4">
-                    <input type="hidden" name="action" value="add">
-                    <input type="text" name="player_name" class="form-control" placeholder="Imię i nazwisko zawodnika" required>
-                    <button type="submit" class="btn btn-success">Dodaj zawodnika</button>
-                </form>
-                <ul class="list-group">
-                    {% for p in team.players %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        {{ p.name }}
-                        <form method="POST" class="m-0">
-                            <input type="hidden" name="action" value="delete">
-                            <input type="hidden" name="player_id" value="{{ p.id }}">
-                            <button type="submit" class="btn btn-sm btn-danger">Zwolnij</button>
-                        </form>
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <ul class="nav nav-tabs card-header-tabs" id="trenerTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'squad' %}active font-weight-bold{% endif %}" 
+                                id="squad-tab" data-bs-toggle="tab" data-bs-target="#squad-panel" 
+                                type="button" role="tab" aria-controls="squad-panel" aria-selected="true">
+                            📋 Zarządzaj składem
+                        </button>
                     </li>
-                    {% else %}
-                    <li class="list-group-item text-muted">Brak zawodników w drużynie.</li>
-                    {% endfor %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'analyze' %}active font-weight-bold{% endif %}" 
+                                id="analyze-tab" data-bs-toggle="tab" data-bs-target="#analyze-panel" 
+                                type="button" role="tab" aria-controls="analyze-panel" aria-selected="false">
+                            📊 Analiza rywala
+                        </button>
+                    </li>
                 </ul>
             </div>
 
-            <div class="col-md-6 ps-4">
-                <h3>Analiza Rywala</h3>
-                <p class="text-muted">Sprawdź, który z Twoich zawodników radzi sobie najlepiej przeciwko wybranej drużynie.</p>
+            <div class="card-body">
+                <div class="tab-content" id="trenerTabsContent">
 
-                <form method="POST" class="d-flex gap-2 mt-3 mb-4">
-                    <input type="hidden" name="action" value="analyze">
-                    <input type="text" name="team_name" class="form-control" placeholder="Wpisz nazwę klubu rywala (np. KS Flask)" required>
-                    <button type="submit" class="btn btn-primary">Szukaj</button>
-                </form>
+                    <div class="tab-pane fade {% if active_tab == 'squad' %}show active{% endif %}" id="squad-panel" role="tabpanel" aria-labelledby="squad-tab">
+                        <h4 class="card-title mt-2">Skład Twojej drużyny: <span class="text-primary">{{ team.name }}</span></h4>
+                        <p class="text-muted small">Tutaj możesz dodawać nowych zawodników lub zwalniać obecnych.</p>
 
-                {% if error_msg %}
-                    <div class="alert alert-warning">{{ error_msg }}</div>
-                {% endif %}
+                        <form method="POST" class="d-flex gap-2 mt-3 mb-4">
+                            <input type="hidden" name="action" value="add">
+                            <input type="text" name="player_name" class="form-control" placeholder="Imię i nazwisko nowego zawodnika" required>
+                            <button type="submit" class="btn btn-success px-4">Dodaj</button>
+                        </form>
 
-                {% if best_player_name %}
-                    <div class="card mt-3">
-                        <div class="card-header bg-dark text-white">
-                            Wynik analizy przeciwko: <strong>{{ searched_team.name }}</strong>
-                        </div>
-                        <div class="card-body text-center">
-                            <h5 class="card-title">Najlepszy strzelec: <span class="text-success">{{ best_player_name }}</span></h5>
-                            <p class="card-text h1">{{ max_goals }} ⚽</p>
-                            <p class="text-muted">Liczba strzelonych bramek</p>
-                        </div>
+                        <ul class="list-group">
+                            {% for p in team.players %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><strong>{{ loop.index }}.</strong> {{ p.name }}</span>
+                                <form method="POST" class="m-0">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="player_id" value="{{ p.id }}">
+                                    <button type="submit" class="btn btn-sm btn-danger">Zwolnij</button>
+                                </form>
+                            </li>
+                            {% else %}
+                            <li class="list-group-item text-muted text-center py-3">Brak zawodników w kadrze. Dodaj pierwszego piłkarza powyżej!</li>
+                            {% endfor %}
+                        </ul>
                     </div>
-                {% endif %}
-            </div>
 
+                    <div class="tab-pane fade {% if active_tab == 'analyze' %}show active{% endif %}" id="analyze-panel" role="tabpanel" aria-labelledby="analyze-tab">
+                        <h4 class="card-title mt-2">Panel Analizy Przeciwnika</h4>
+                        <p class="text-muted small">Wpisz nazwę klubu, aby sprawdzić, który z Twoich podopiecznych strzelił mu najwięcej bramek.</p>
+
+                        <form method="POST" class="d-flex gap-2 mt-3 mb-4">
+                            <input type="hidden" name="action" value="analyze">
+                            <input type="text" name="team_name" class="form-control" placeholder="Wpisz nazwę klubu rywala (np. KS Flask)" required>
+                            <button type="submit" class="btn btn-primary px-4">Szukaj</button>
+                        </form>
+
+                        {% if error_msg %}
+                            <div class="alert alert-warning mt-3">{{ error_msg }}</div>
+                        {% endif %}
+
+                        {% if best_player_name %}
+                            <div class="card mt-3 border-success">
+                                <div class="card-header bg-success text-white">
+                                    Statystyki przeciwko klubowi: <strong>{{ searched_team.name }}</strong>
+                                </div>
+                                <div class="card-body text-center bg-light">
+                                    <h5 class="card-title">Najskuteczniejszy zawodnik:</h5>
+                                    <h2 class="text-success font-weight-bold">{{ best_player_name }}</h2>
+                                    <hr style="max-width: 200px; margin: 10px auto;">
+                                    <p class="card-text h1 mb-0">{{ max_goals }} ⚽</p>
+                                    <p class="text-muted small">Łączna liczba strzelonych bramek</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
         </div>
     </div>
     """
 
     return render_template_string(NAV_HTML + CONTENT_HTML + FOOTER_HTML,
                                   team=my_team,
+                                  active_tab=active_tab,
                                   error_msg=error_msg,
                                   best_player_name=best_player_name,
                                   max_goals=max_goals,
