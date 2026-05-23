@@ -8,24 +8,23 @@ kibic_bp = Blueprint('kibic_bp', __name__)
 
 
 # ==========================================
-# 1. STRONA: TABELA LIGI
+# 1. STRONA: TABELA LIGI (Z KLIKALNYMI KLUBAMI)
 # ==========================================
 @kibic_bp.route('/tabela')
 def tabela():
     teams = Team.query.all()
     matches = Match.query.filter_by(is_finished=True).all()
 
-    # Słownik do przechowywania statystyk każdej drużyny
-    stats = {t.id: {'name': t.name, 'pts': 0, 'w': 0, 'd': 0, 'l': 0, 'gf': 0, 'ga': 0, 'gd': 0} for t in teams}
+    # Słownik statystyk - dodaliśmy pole 'id', aby Jinja mogła wygenerować linki url_for
+    stats = {t.id: {'id': t.id, 'name': t.name, 'pts': 0, 'w': 0, 'd': 0, 'l': 0, 'gf': 0, 'ga': 0, 'gd': 0} for t in
+             teams}
 
     for m in matches:
-        # Gole strzelone (gf - goals for) i stracone (ga - goals against)
         stats[m.home_team_id]['gf'] += m.home_score
         stats[m.home_team_id]['ga'] += m.away_score
         stats[m.away_team_id]['gf'] += m.away_score
         stats[m.away_team_id]['ga'] += m.home_score
 
-        # Rozstrzygnięcie meczu
         if m.home_score > m.away_score:
             stats[m.home_team_id]['w'] += 1
             stats[m.home_team_id]['pts'] += 3
@@ -40,11 +39,9 @@ def tabela():
             stats[m.away_team_id]['d'] += 1
             stats[m.away_team_id]['pts'] += 1
 
-    # Obliczanie bilansu bramkowego (gd - goal difference)
     for t_id in stats:
         stats[t_id]['gd'] = stats[t_id]['gf'] - stats[t_id]['ga']
 
-    # Sortowanie: 1. Punkty, 2. Bilans bramek, 3. Strzelone bramki
     sorted_stats = sorted(stats.values(), key=lambda x: (x['pts'], x['gd'], x['gf']), reverse=True)
 
     CONTENT_HTML = """
@@ -56,7 +53,7 @@ def tabela():
                     <thead class="table-dark">
                         <tr>
                             <th class="ps-3" style="width: 50px;">#</th>
-                            <th class="text-start">Klub</th>
+                            <th class="text-start">Klub (Kliknij nazwę, by zobaczyć mecze)</th>
                             <th title="Punkty">PKT</th>
                             <th title="Zwycięstwa">Z</th>
                             <th title="Remisy">R</th>
@@ -69,7 +66,9 @@ def tabela():
                         {% for s in table %}
                         <tr class="{% if loop.index == 1 %}table-success fw-bold{% elif loop.index > table|length - 2 %}table-danger{% endif %}">
                             <td class="ps-3">{{ loop.index }}</td>
-                            <td class="text-start">{{ s.name }}</td>
+                            <td class="text-start">
+                                <a href="{{ url_for('kibic_bp.szczegoly_klubu', team_id=s.id) }}" class="fw-bold text-primary text-decoration-none">{{ s.name }}</a>
+                            </td>
                             <td class="fs-5 fw-bold text-primary">{{ s.pts }}</td>
                             <td>{{ s.w }}</td>
                             <td>{{ s.d }}</td>
@@ -88,21 +87,104 @@ def tabela():
                 </table>
             </div>
         </div>
-        <p class="text-muted small mt-2">
-            <span class="badge bg-success">Zielony</span> - Miejsce premiowane awansem/mistrzostwem | 
-            <span class="badge bg-danger">Czerwony</span> - Strefa spadkowa
-        </p>
     </div>
     """
     return render_template_string(NAV_HTML + CONTENT_HTML + FOOTER_HTML, table=sorted_stats)
 
 
 # ==========================================
-# 2. STRONA: KRÓL STRZELCÓW
+# 2. NOWA STRONA: MECZE I STRZELCY DANEJ DRUŻYNY
+# ==========================================
+@kibic_bp.route('/klub/<int:team_id>')
+def szczegoly_klubu(team_id):
+    team = Team.query.get_or_404(team_id)
+
+    # Pobieramy wszystkie zakończone mecze, w których brała udział ta drużyna
+    matches = Match.query.filter(
+        Match.is_finished == True,
+        ((Match.home_team_id == team_id) | (Match.away_team_id == team_id))
+    ).order_by(Match.id.desc()).all()
+
+    teams_dict = {t.id: t.name for t in Team.query.all()}
+
+    match_details = []
+    for m in matches:
+        goals = Goal.query.filter_by(match_id=m.id).all()
+
+        home_scorers = []
+        away_scorers = []
+
+        for g in goals:
+            player = Player.query.get(g.player_id)
+            scorer_text = f"{player.name} ({g.goals}x)" if g.goals > 1 else player.name
+
+            if g.is_own_goal:
+                # Logika samobójów: dopisujemy tekst pechowca do kolumny przeciwników
+                if player.team_id == m.home_team_id:
+                    away_scorers.append(f"{player.name} (samobój ❌)")
+                else:
+                    home_scorers.append(f"{player.name} (samobój ❌)")
+            else:
+                if player.team_id == m.home_team_id:
+                    home_scorers.append(scorer_text)
+                else:
+                    away_scorers.append(scorer_text)
+
+        match_details.append({
+            'match': m,
+            'home_team': teams_dict[m.home_team_id],
+            'away_team': teams_dict[m.away_team_id],
+            'home_scorers': ", ".join(home_scorers),
+            'away_scorers': ", ".join(away_scorers)
+        })
+
+    CONTENT_HTML = """
+    <div>
+        <h3 class="mb-3">Mecze i strzelcy drużyny: <span class="text-primary">{{ team.name }}</span></h3>
+        <p class="text-muted mb-4">Wykaz wszystkich rozegranych spotkań oraz zawodników, którzy zdobywali bramki.</p>
+
+        <div class="row">
+            {% for md in details %}
+            <div class="col-12 mb-3">
+                <div class="card shadow-sm border-light">
+                    <div class="card-body">
+                        <div class="row align-items-center text-center">
+                            <div class="col-md-4 fw-bold fs-5 text-primary">{{ md.home_team }}</div>
+                            <div class="col-md-4 fs-3 fw-bold bg-light rounded py-2 shadow-sm">{{ md.match.home_score }} : {{ md.match.away_score }}</div>
+                            <div class="col-md-4 fw-bold fs-5 text-danger">{{ md.away_team }}</div>
+                        </div>
+                        <hr class="my-2">
+                        <div class="row small text-muted">
+                            <div class="col-md-6 text-md-end border-end">
+                                {% if md.home_scorers %}⚽ <b>Gole:</b> {{ md.home_scorers }}{% else %}<span class="text-black-50">Brak strzelców</span>{% endif %}
+                            </div>
+                            <div class="col-md-6 text-md-start">
+                                {% if md.away_scorers %}⚽ <b>Gole:</b> {{ md.away_scorers }}{% else %}<span class="text-black-50">Brak strzelców</span>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12 text-center text-muted py-5 bg-white rounded shadow-sm">
+                Ta drużyna nie rozegrała jeszcze żadnego meczu w tym sezonie.
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('kibic_bp.tabela') }}" class="btn btn-outline-dark fw-bold px-5 shadow-sm">Powrót do Tabeli Ligi</a>
+        </div>
+    </div>
+    """
+    return render_template_string(NAV_HTML + CONTENT_HTML + FOOTER_HTML, team=team, details=match_details)
+
+
+# ==========================================
+# 3. STRONA: KRÓL STRZELCÓW
 # ==========================================
 @kibic_bp.route('/strzelcy')
 def strzelcy():
-    # Pobieramy graczy i sumujemy gole, IGNORUJĄC gole samobójcze!
     top_scorers = db.session.query(
         Player.name,
         Team.name.label('team_name'),
@@ -147,15 +229,15 @@ def strzelcy():
 
 
 # ==========================================
-# 3. STRONA: HISTORIA KLUBÓW (KADRY)
+# 4. STRONA: KADRY KLUBÓW (ZMIENIONA NAZWA)
 # ==========================================
-@kibic_bp.route('/historia')
-def historia_klubow():
+@kibic_bp.route('/kadry')
+def kadry_klubow():
     teams = Team.query.all()
 
     CONTENT_HTML = """
     <div>
-        <h3 class="mb-4">Historia i Kadry Klubów 📜</h3>
+        <h3 class="mb-4">Kadry Klubów 👥</h3>
         <div class="row row-cols-1 row-cols-md-2 g-4">
             {% for t in teams %}
             <div class="col">
