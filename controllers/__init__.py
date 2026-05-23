@@ -30,7 +30,7 @@ NAV_HTML = BASE_HTML_HEAD + """
     </nav>
 
     <div class="row mb-4">
-        <div class="col-12 d-flex gap-2 justify-content-center">
+        <div class="col-12 d-flex gap-2 justify-content-center flex-wrap">
             <a href="{{ url_for('kibic_bp.tabela') }}" class="btn btn-outline-dark">Tabela Ligi</a>
             <a href="{{ url_for('kibic_bp.strzelcy') }}" class="btn btn-outline-dark">Król Strzelców</a>
             <a href="{{ url_for('kibic_bp.historia_klubow') }}" class="btn btn-primary fw-bold">Historia Klubów 🕒</a>
@@ -38,6 +38,7 @@ NAV_HTML = BASE_HTML_HEAD + """
             {% if current_user.is_authenticated %}
                 {% if current_user.role.name == 'coach' %}
                     <a href="{{ url_for('trener_bp.trener_sklad') }}" class="btn btn-success">Zarządzaj Składem</a>
+                    <a href="{{ url_for('trener_bp.trener_analiza') }}" class="btn btn-info text-white fw-bold">Analiza Rywala 🔍</a>
                 {% endif %}
 
                 {% if current_user.role.name == 'referee' %}
