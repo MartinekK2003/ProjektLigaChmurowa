@@ -37,16 +37,17 @@ NAV_HTML = BASE_HTML_HEAD + """
 
             {% if current_user.is_authenticated %}
                 {% if current_user.role.name == 'coach' %}
-                    <a href="{{ url_for('trener_bp.trener_sklad') }}" class="btn btn-success">Zarządzaj Składem</a>
+                    <a href="{{ url_for('trener_bp.trener_sklad') }}" class="btn btn-success fw-bold">Zarządzaj Składem</a>
                     <a href="{{ url_for('trener_bp.trener_analiza') }}" class="btn btn-info text-white fw-bold">Analiza Rywala 🔍</a>
                 {% endif %}
 
                 {% if current_user.role.name == 'referee' %}
-                    <a href="{{ url_for('sedzia_bp.sedzia_mecze') }}" class="btn btn-warning">Wprowadź Wyniki</a>
+                    <a href="{{ url_for('sedzia_bp.sedzia_mecze') }}" class="btn btn-warning fw-bold">Wprowadź Wyniki</a>
                 {% endif %}
 
                 {% if current_user.role.name == 'admin' %}
-                    <a href="{{ url_for('admin_bp.admin_druzyny') }}" class="btn btn-danger">Zarządzaj Drużynami</a>
+                    <a href="{{ url_for('admin_bp.admin_druzyny') }}" class="btn btn-danger fw-bold">Zarządzaj Drużynami</a>
+                    <a href="{{ url_for('admin_bp.admin_zaplanuj_mecz') }}" class="btn btn-outline-danger fw-bold">Zaplanuj Mecz 📅</a>
                 {% endif %}
             {% endif %}
         </div>
@@ -62,5 +63,5 @@ FOOTER_HTML = """
 
 DASHBOARD_HTML = NAV_HTML + """
     <h2 class="text-center">Witaj w systemie zarządzania Ligą Chmurową!</h2>
-    <p class="text-center text-muted">Wybierz moduł z menu powyżej, aby przeglądać statystyki rozgrywek.</p>
+    <p class="text-center text-muted">Wybierz moduł z menu powyżej, aby przeglądać statystyki rozgrywek lub zarządzać ligą.</p>
 """ + FOOTER_HTML
