@@ -51,3 +51,5 @@ class Goal(db.Model):
     match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=False)
     player_id = db.Column(db.Integer, db.ForeignKey('players.id'), nullable=False)
     goals = db.Column(db.Integer, nullable=False, default=0)
+    # NOWA KOLUMNA: Flaga oznaczająca gola samobójczego
+    is_own_goal = db.Column(db.Boolean, default=False, nullable=False)
