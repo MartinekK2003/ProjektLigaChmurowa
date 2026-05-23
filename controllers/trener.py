@@ -1,6 +1,7 @@
+# controllers/trener.py
 from flask import Blueprint, render_template_string, request, redirect, url_for
 from flask_login import login_required, current_user
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 from models import db, Team, Player, Goal, Match
 from controllers import NAV_HTML, FOOTER_HTML
 
@@ -38,7 +39,6 @@ def trener_sklad():
 
     my_team = Team.query.get(current_user.team_id)
 
-    # Treść strony wstrzykiwana między NAV_HTML a FOOTER_HTML
     CONTENT_HTML = """
     <div>
         <h3 class="mb-3">Skład drużyny: <span class="text-success">{{ team.name }}</span></h3>
@@ -70,7 +70,7 @@ def trener_sklad():
 
 
 # ==========================================
-# 2. STRONA: ANALIZA RYWALA
+# 2. STRONA: ANALIZA RYWALA (ZMODYFIKOWANA)
 # ==========================================
 @trener_bp.route('/trener/analiza', methods=['GET', 'POST'])
 @login_required
@@ -82,44 +82,49 @@ def trener_analiza():
         return "Nie przypisano Cię do żadnej drużyny!", 400
 
     best_player_name = None
+    best_player_team = None
     max_goals = 0
     searched_team = None
     error_msg = None
 
     if request.method == 'POST':
         team_name = request.form.get('team_name')
-        # Wyszukiwanie klubu rywala (ilike ignoruje wielkość liter)
         searched_team = Team.query.filter(Team.name.ilike(f"%{team_name}%")).first()
 
         if not searched_team:
             error_msg = f"Nie znaleziono drużyny o nazwie '{team_name}'."
-        elif searched_team.id == current_user.team_id:
-            error_msg = "Próbujesz analizować własną drużynę! Wybierz przeciwnika."
         else:
-            # Szukamy gracza trenera z największą liczbą goli przeciwko tej drużynie
+            # ZAAWANSOWANE ZAPYTANIE: Szukamy w CAŁEJ bazie zawodnika, który strzelił najwięcej goli wybranemu klubowi
             result = db.session.query(
-                Player.name, func.sum(Goal.goals).label('total_goals')
+                Player.name.label('player_name'),
+                Team.name.label('team_name'),
+                func.sum(Goal.goals).label('total_goals')
             ).join(Goal, Goal.player_id == Player.id) \
                 .join(Match, Match.id == Goal.match_id) \
-                .filter(Player.team_id == current_user.team_id) \
-                .filter(or_(Match.home_team_id == searched_team.id, Match.away_team_id == searched_team.id)) \
-                .group_by(Player.id) \
+                .join(Team, Team.id == Player.team_id) \
+                .filter(Goal.is_own_goal == False) \
+                .filter(or_(
+                and_(Match.home_team_id == searched_team.id, Player.team_id == Match.away_team_id),
+                and_(Match.away_team_id == searched_team.id, Player.team_id == Match.home_team_id)
+            )) \
+                .group_by(Player.id, Team.id) \
                 .order_by(func.sum(Goal.goals).desc()) \
                 .first()
 
             if result:
-                best_player_name = result.name
+                best_player_name = result.player_name
+                best_player_team = result.team_name
                 max_goals = result.total_goals
             else:
-                error_msg = f"Twoja drużyna nie strzeliła jeszcze ani jednego gola przeciwko: {searched_team.name}."
+                error_msg = f"Nikt w całej lidze nie strzelił jeszcze bramki przeciwko: {searched_team.name}."
 
     CONTENT_HTML = """
     <div>
         <h3 class="mb-3">Analiza Rywala 🔍</h3>
-        <p class="text-muted mb-4">Wpisz nazwę klubu przeciwnika, aby dowiedzieć się, który z Twoich podopiecznych ma na niego patent.</p>
+        <p class="text-muted mb-4">Wpisz nazwę dowolnego klubu, aby dowiedzieć się, który zawodnik ze <b>wszystkich drużyn w lidze</b> nastrzelał mu najwięcej bramek.</p>
 
         <form method="POST" class="d-flex gap-2 mb-4">
-            <input type="text" name="team_name" class="form-control" placeholder="Wpisz nazwę klubu rywala (np. KS Flask)" required>
+            <input type="text" name="team_name" class="form-control" placeholder="Wpisz nazwę klubu (np. KS Flask)" required>
             <button type="submit" class="btn btn-info text-white fw-bold px-4">Szukaj</button>
         </form>
 
@@ -130,13 +135,15 @@ def trener_analiza():
         {% if best_player_name %}
             <div class="card border-info shadow-sm mt-4" style="max-width: 500px; margin: 0 auto;">
                 <div class="card-header bg-info text-white text-center fw-bold">
-                    Statystyki przeciwko: {{ searched_team.name }}
+                    Największy koszmar klubu: {{ searched_team.name }} 💥
                 </div>
                 <div class="card-body text-center bg-light">
-                    <h5 class="card-title text-muted">Najlepszy strzelec:</h5>
-                    <h2 class="text-info font-weight-bold my-3">{{ best_player_name }}</h2>
-                    <h1 class="display-4 text-dark mb-0">{{ max_goals }} ⚽</h1>
-                    <p class="text-muted mt-2 mb-0">Łącznie strzelonych goli</p>
+                    <h5 class="card-title text-muted">Zawodnik z największą liczbą goli:</h5>
+                    <h2 class="text-info font-weight-bold my-2">{{ best_player_name }}</h2>
+                    <p class="badge bg-secondary text-uppercase mb-3" style="font-size: 0.9rem;">Klub: {{ best_player_team }}</p>
+                    <hr style="max-width: 150px; margin: 10px auto;">
+                    <h1 class="display-4 text-dark mb-0 fw-bold">{{ max_goals }} ⚽</h1>
+                    <p class="text-muted small mt-1 mb-0">Tyle bramek im wbił</p>
                 </div>
             </div>
         {% endif %}
@@ -146,5 +153,6 @@ def trener_analiza():
     return render_template_string(NAV_HTML + CONTENT_HTML + FOOTER_HTML,
                                   error_msg=error_msg,
                                   best_player_name=best_player_name,
+                                  best_player_team=best_player_team,
                                   max_goals=max_goals,
                                   searched_team=searched_team)
